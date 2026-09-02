@@ -1,0 +1,164 @@
+@import "tailwindcss";
+
+/* TurmaBill Custom Styles */
+:root {
+  --turmeric: #B8860B;
+  --turmeric-light: #D4A017;
+  --turmeric-bg: #FFF8E7;
+  --green-accent: #2E7D32;
+  --green-light: #E8F5E9;
+  --charcoal: #1a1a1a;
+  --gray-text: #4a4a4a;
+  --border: #d1d5db;
+  --bg: #f9fafb;
+  --white: #ffffff;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--charcoal);
+  background: var(--bg);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Compact table styles */
+.table-compact th,
+.table-compact td {
+  padding: 6px 10px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-compact th {
+  background: #f3f4f6;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: var(--gray-text);
+  border-bottom: 2px solid var(--border);
+}
+
+.table-compact tr:hover {
+  background: #f9fafb;
+}
+
+/* Input styles */
+input, select, textarea {
+  font-size: 14px;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--turmeric) !important;
+  box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.15);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  .no-print,
+  .sidebar,
+  .topbar,
+  nav,
+  button:not(.print-visible),
+  .toast-container {
+    display: none !important;
+  }
+
+  .print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    margin: 0;
+    padding: 15mm;
+    box-sizing: border-box;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}
+
+/* Bill print layout */
+.bill-print {
+  font-family: 'Courier New', Courier, monospace;
+  color: black;
+  background: white;
+  max-width: 210mm;
+  margin: 0 auto;
+}
+
+.bill-print table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.bill-print th,
+.bill-print td {
+  border: 1px solid #000;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.bill-print .header-text {
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+
+.bill-print .sub-header {
+  text-align: center;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+/* Toast override */
+.toast-container {
+  z-index: 9999;
+}
+
+/* Sidebar active link */
+.sidebar-link.active {
+  background: var(--turmeric-bg);
+  color: var(--turmeric);
+  border-right: 3px solid var(--turmeric);
+  font-weight: 600;
+}
+
+.sidebar-link:hover {
+  background: #f3f4f6;
+}
