@@ -38,11 +38,20 @@ function App() {
 
   if (!ready) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-amber-700 mb-2">🌾 TURMABILL</div>
-          <div className="text-sm text-gray-500">Loading...</div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)', gap: 16 }}>
+        <div style={{
+          width: 60, height: 60, background: 'linear-gradient(135deg, #C8920A, #F0C44B)',
+          borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 28, boxShadow: '0 4px 12px rgba(200,146,10,.3)',
+          animation: 'pulse 1.5s ease-in-out infinite',
+        }}>
+          🌾
         </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.4px', color: '#111827' }}>TurmaBill</div>
+          <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>Loading your data…</div>
+        </div>
+        <style>{`@keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.06); opacity: .85; } }`}</style>
       </div>
     );
   }
@@ -52,20 +61,19 @@ function App() {
       <Toaster
         position="top-right"
         toastOptions={{
-          duration: 3000,
+          duration: 3500,
           style: {
-            background: '#fff',
-            color: '#1a1a1a',
-            border: '1px solid #e5e7eb',
+            background: '#ffffff',
+            color: '#111827',
+            border: '1px solid #E5E7EB',
+            borderRadius: '10px',
             fontSize: '13px',
-            padding: '8px 12px',
+            padding: '10px 14px',
+            boxShadow: '0 4px 12px rgba(0,0,0,.10)',
+            fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
           },
-          success: {
-            iconTheme: { primary: '#2E7D32', secondary: '#fff' },
-          },
-          error: {
-            iconTheme: { primary: '#dc2626', secondary: '#fff' },
-          },
+          success: { iconTheme: { primary: '#16A34A', secondary: '#fff' } },
+          error:   { iconTheme: { primary: '#DC2626', secondary: '#fff' } },
         }}
       />
       <Routes>

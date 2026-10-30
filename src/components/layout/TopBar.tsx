@@ -1,151 +1,214 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, Search, PlusCircle, Bell, User } from 'lucide-react';
+import { Menu, Search, PlusCircle, Bell, User, X, FileText, Users, Building2, Package, Wheat, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { globalSearch } from '../../database/services';
+import type { SearchResult } from '../../types';
 
 interface TopBarProps {
   onMenuClick: () => void;
 }
 
-interface SearchResult {
-  id: string;
-  type: 'FARMER' | 'BUYER' | 'BILL' | 'INWARD';
-  name: string;
-  number?: string;
-  amount?: number;
-}
+const TYPE_CONFIG: Record<SearchResult['type'], { icon: React.ElementType; label: string; color: string; path: string }> = {
+  farmer:  { icon: Users,    label: 'Farmer',  color: '#16A34A', path: '/farmers' },
+  buyer:   { icon: Building2, label: 'Buyer',   color: '#2563EB', path: '/buyers' },
+  awak:    { icon: Wheat,    label: 'Awak',    color: '#C8920A', path: '/awak' },
+  patti:   { icon: FileText, label: 'Patti',   color: '#7C3AED', path: '/farmer-patti' },
+  invoice: { icon: Receipt,  label: 'Invoice', color: '#DC2626', path: '/buyer-invoice' },
+  product: { icon: Package,  label: 'Product', color: '#0891B2', path: '/products' },
+};
 
 export default function TopBar({ onMenuClick }: TopBarProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [selectedIdx, setSelectedIdx] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  
-  const currentDate = new Date().toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  }).replace(/\//g, '-');
 
+  const currentDate = new Date().toLocaleDateString('en-IN', {
+    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
+  });
+
+  /* Close on outside click */
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setIsSearchOpen(false);
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  /* Debounced search */
   useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+    if (query.trim().length < 2) return;
+
+    setLoading(true);
     const timer = setTimeout(async () => {
-      if (!searchQuery.trim()) {
-        setSearchResults([]);
-        return;
-      }
-      
       try {
-        // Dynamic import to handle if service is not yet available
-        // const { globalSearch } = await import('../../database/services');
-        // const results = await globalSearch(searchQuery);
-        // setSearchResults(results);
-        
-        // Mock data for now
-        if (searchQuery.length > 2) {
-           setSearchResults([
-             { id: '1', type: 'FARMER', name: 'Ramesh Patel' },
-             { id: '2', type: 'BILL', name: 'INV-2023-001', amount: 45000 }
-           ]);
-        }
-      } catch (error) {
-        console.error('Search failed:', error);
+        const res = await globalSearch(query.trim());
+        setResults(res.slice(0, 8));
+        setOpen(true);
+        setSelectedIdx(-1);
+      } catch {
+        setResults([]);
+      } finally {
+        setLoading(false);
       }
-    }, 300);
-
+    }, 280);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [query]);
 
-  const handleResultClick = (result: SearchResult) => {
-    setIsSearchOpen(false);
-    setSearchQuery('');
-    // Navigate based on type
-    // navigate(`/${result.type.toLowerCase()}/${result.id}`);
+  const navigateTo = (result: SearchResult) => {
+    setOpen(false);
+    setQuery('');
+    const cfg = TYPE_CONFIG[result.type];
+    navigate(`${cfg.path}/${result.id}`);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!open || results.length === 0) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.min(i + 1, results.length - 1)); }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, -1)); }
+    if (e.key === 'Enter' && selectedIdx >= 0) { navigateTo(results[selectedIdx]); }
+    if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur(); }
   };
 
   return (
-    <header className="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-4 flex-shrink-0">
-      <div className="flex items-center flex-1">
-        <button 
-          onClick={onMenuClick}
-          className="md:hidden mr-3 p-1 text-gray-500 hover:text-gray-700 rounded hover:bg-gray-100"
-        >
-          <Menu size={20} />
-        </button>
+    <header className="topbar">
+      {/* Mobile menu toggle */}
+      <button className="md:hidden topbar-icon-btn" onClick={onMenuClick} id="menu-toggle-btn">
+        <Menu size={18} />
+      </button>
 
-        <div className="relative max-w-md w-full ml-2 md:ml-0" ref={searchRef}>
-          <div className="relative flex items-center">
-            <Search className="absolute left-2.5 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search farmers, buyers, bills..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setIsSearchOpen(true)}
-              className="w-full h-8 pl-9 pr-3 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#B8860B] focus:border-[#B8860B] bg-gray-50 focus:bg-white transition-colors"
-            />
-          </div>
+      {/* Search */}
+      <div className="topbar-search" ref={containerRef}>
+        <span className="topbar-search-icon">
+          <Search size={14} />
+        </span>
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Search farmers, buyers, invoices… (⌘K)"
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => { if (results.length > 0) setOpen(true); }}
+          onKeyDown={handleKeyDown}
+          id="global-search-input"
+          autoComplete="off"
+        />
+        {query && (
+          <button
+            onClick={() => { setQuery(''); setResults([]); setOpen(false); }}
+            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-subtle)', display: 'flex' }}
+          >
+            <X size={12} />
+          </button>
+        )}
 
-          {isSearchOpen && searchResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-50 max-h-96 overflow-y-auto">
-              {searchResults.map((result, idx) => (
-                <div 
-                  key={idx}
-                  onClick={() => handleResultClick(result)}
-                  className="px-3 py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0 flex items-center justify-between"
+        {/* Results dropdown */}
+        {open && (
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 10, boxShadow: 'var(--shadow-lg)',
+            zIndex: 200, overflow: 'hidden', maxHeight: 360, overflowY: 'auto'
+          }}>
+            {loading && (
+              <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
+                Searching…
+              </div>
+            )}
+            {!loading && results.length === 0 && query.length >= 2 && (
+              <div style={{ padding: '16px', fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
+                No results for &quot;{query}&quot;
+              </div>
+            )}
+            {!loading && results.map((result, idx) => {
+              const cfg = TYPE_CONFIG[result.type];
+              const Icon = cfg.icon;
+              return (
+                <div
+                  key={`${result.type}-${result.id}`}
+                  onClick={() => navigateTo(result)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '9px 14px', cursor: 'pointer',
+                    borderBottom: '1px solid #F3F4F6',
+                    background: idx === selectedIdx ? '#F9FAFB' : 'transparent',
+                    transition: 'background 100ms',
+                  }}
+                  onMouseEnter={() => setSelectedIdx(idx)}
                 >
-                  <div className="flex items-center">
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 mr-2 uppercase">
-                      {result.type}
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 7,
+                    background: cfg.color + '18',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <Icon size={13} style={{ color: cfg.color }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {result.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                      {result.sublabel}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, padding: '1px 6px',
+                    background: cfg.color + '15', color: cfg.color,
+                    borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.4px',
+                    flexShrink: 0,
+                  }}>
+                    {cfg.label}
+                  </span>
+                  {result.amount != null && (
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', flexShrink: 0 }}>
+                      ₹{result.amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                     </span>
-                    <span className="text-sm font-medium text-gray-800">{result.name}</span>
-                  </div>
-                  <div className="text-sm text-gray-500 text-right">
-                    {result.number && <div className="text-xs">{result.number}</div>}
-                    {result.amount && <div className="font-medium text-gray-700">₹{result.amount.toLocaleString('en-IN')}</div>}
-                  </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center space-x-3 sm:space-x-4 pl-4">
-        <div className="hidden sm:block text-sm font-medium text-gray-600">
-          {currentDate}
-        </div>
-        
-        <button 
-          onClick={() => navigate('/transaction/new')}
-          className="hidden sm:flex items-center h-8 px-3 text-sm font-medium text-white bg-[#B8860B] hover:bg-amber-600 rounded transition-colors"
+      {/* Right side actions */}
+      <div className="topbar-actions">
+        <span className="topbar-date hidden sm:block">{currentDate}</span>
+
+        <button
+          className="btn btn-primary btn-sm hidden sm:inline-flex"
+          onClick={() => navigate('/transactions/new')}
+          id="new-transaction-btn"
         >
-          <PlusCircle size={16} className="mr-1.5" />
+          <PlusCircle size={13} />
           New Transaction
         </button>
 
-        <button className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded relative">
-          <Bell size={18} />
-          <span className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-red-500 border border-white"></span>
+        <button className="topbar-icon-btn" id="notifications-btn" title="Notifications">
+          <Bell size={16} />
+          <span className="notif-badge" />
         </button>
 
-        <div className="flex items-center space-x-2 border-l border-gray-200 pl-3">
-          <div className="h-8 w-8 rounded bg-gray-200 flex items-center justify-center text-gray-600">
-            <User size={18} />
-          </div>
-          <div className="hidden md:block flex-col text-left">
-            <div className="text-xs font-semibold text-gray-800 leading-none">Admin User</div>
-            <div className="text-[10px] text-gray-500 leading-none mt-1">ADMIN</div>
-          </div>
+        <div
+          className="topbar-avatar"
+          title="Admin"
+          id="user-avatar"
+          style={{ fontSize: 12 }}
+        >
+          A
         </div>
       </div>
     </header>
