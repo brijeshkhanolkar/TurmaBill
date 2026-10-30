@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save, X } from 'lucide-react';
+import { Save, ArrowLeft, User, Phone, MapPin, Building2, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getFarmerById, addFarmer, updateFarmer } from '../../database/services';
 import { Farmer } from '../../types';
@@ -57,8 +57,8 @@ export default function FarmerForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.village || !formData.mobile) {
-      toast.error('Please fill required fields');
+    if (!formData.name?.trim() || !formData.village?.trim() || !formData.mobile?.trim()) {
+      toast.error('Please enter name, village, and mobile number');
       return;
     }
 
@@ -85,33 +85,54 @@ export default function FarmerForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-lg font-semibold text-gray-800">
-          {isEdit ? 'Edit Farmer' : 'Add New Farmer'}
-        </h1>
+    <div className="max-w-3xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            icon={<ArrowLeft size={16} />} 
+            onClick={() => navigate('/farmers')}
+            className="text-gray-500 hover:text-gray-900"
+          >
+            Back
+          </Button>
+          <div className="h-4 w-px bg-gray-200" />
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+              {isEdit ? 'Edit Farmer Profile' : 'Add New Farmer'}
+            </h1>
+            <p className="text-xs text-gray-500">Enter personal contact and bank settlement info</p>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Main Form Card */}
+      <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden">
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8">
+          {/* Section 1: Basic Information */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-gray-700 border-b pb-2">Basic Details</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-gray-100 text-sm font-bold text-gray-800">
+              <User size={16} className="text-[#C8920A]" />
+              Basic Information
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Farmer Name"
                 name="name"
                 value={formData.name || ''}
                 onChange={handleChange}
                 required
-                placeholder="Enter full name"
+                placeholder="e.g. Ramesh Patel"
               />
               <Input
-                label="Village"
+                label="Village / Town"
                 name="village"
                 value={formData.village || ''}
                 onChange={handleChange}
                 required
-                placeholder="Enter village"
+                placeholder="e.g. Sangli"
               />
               <Input
                 label="Mobile Number"
@@ -122,27 +143,31 @@ export default function FarmerForm() {
                 placeholder="10-digit mobile number"
               />
               <Input
-                label="PAN Number"
+                label="PAN Number (Optional)"
                 name="panNumber"
                 value={formData.panNumber || ''}
                 onChange={handleChange}
-                placeholder="Optional"
+                placeholder="e.g. ABCDE1234F"
               />
-              <div className="col-span-1 md:col-span-2">
+              <div className="sm:col-span-2">
                 <Input
-                  label="Address"
+                  label="Address (Optional)"
                   name="address"
                   value={formData.address || ''}
                   onChange={handleChange}
-                  placeholder="Full address"
+                  placeholder="Street or locality"
                 />
               </div>
             </div>
           </div>
 
+          {/* Section 2: Bank Details */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-gray-700 border-b pb-2">Bank Details (Optional)</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-gray-100 text-sm font-bold text-gray-800">
+              <Building2 size={16} className="text-[#C8920A]" />
+              Bank & Payment Details (Optional)
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Input
                 label="Bank Name"
                 name="bankName"
@@ -155,34 +180,38 @@ export default function FarmerForm() {
                 name="accountNumber"
                 value={formData.accountNumber || ''}
                 onChange={handleChange}
-                placeholder="Enter A/C number"
+                placeholder="Account number"
               />
               <Input
                 label="IFSC Code"
                 name="ifscCode"
                 value={formData.ifscCode || ''}
                 onChange={handleChange}
-                placeholder="Enter IFSC"
+                placeholder="e.g. SBIN0001234"
               />
             </div>
           </div>
 
+          {/* Section 3: Additional Notes */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-gray-700 border-b pb-2">Additional Info</h2>
+            <div className="flex items-center gap-2 pb-2 border-b border-gray-100 text-sm font-bold text-gray-800">
+              <FileText size={16} className="text-[#C8920A]" />
+              Notes & Remarks
+            </div>
             <Input
-              label="Notes"
+              label="Remarks / Notes"
               name="notes"
               value={formData.notes || ''}
               onChange={handleChange}
-              placeholder="Any additional remarks"
+              placeholder="Any specific note regarding this farmer"
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+          {/* Actions Bar */}
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
             <Button
               type="button"
-              variant="ghost"
-              icon={<X size={16} />}
+              variant="secondary"
               onClick={() => navigate('/farmers')}
             >
               Cancel

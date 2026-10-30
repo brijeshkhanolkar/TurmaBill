@@ -57,33 +57,34 @@ export function Modal({
   };
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-xs transition-opacity duration-200">
       <div 
         className="fixed inset-0"
         onClick={handleBackdropClick}
-      ></div>
+      />
       <div 
         ref={modalRef}
-        className={`relative w-full ${sizeClasses[size]} bg-white rounded shadow-xl flex flex-col max-h-[90vh]`}
+        className={`relative w-full ${sizeClasses[size]} bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150`}
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 shrink-0">
-          <h2 className="text-base font-semibold text-gray-800">{title}</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0 bg-gray-50/50">
+          <h2 className="text-base font-bold text-gray-900 tracking-tight">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors"
+            className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+            aria-label="Close dialog"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
         
-        <div className="p-4 overflow-y-auto">
+        <div className="p-6 overflow-y-auto">
           {children}
         </div>
 
         {footer && (
-          <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 shrink-0 rounded-b">
+          <div className="px-6 py-3.5 border-t border-gray-100 bg-gray-50/70 flex justify-end gap-2.5 shrink-0">
             {footer}
           </div>
         )}
@@ -91,8 +92,8 @@ export function Modal({
     </div>
   );
 
-  // Consider checking if document exists for SSR compatibility
   return typeof document !== 'undefined' 
     ? createPortal(modalContent, document.body)
     : null;
 }
+

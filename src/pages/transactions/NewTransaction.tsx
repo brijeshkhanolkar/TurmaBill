@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Printer, FileText, Plus, X } from 'lucide-react';
+import { Save, Plus, Trash2, Zap, ArrowLeft, CheckCircle2, FileText, Receipt } from 'lucide-react';
+import toast from 'react-hot-toast';
 let itemCounter = 0;
 const nextItemId = () => `item-${++itemCounter}`;
 import { 
@@ -10,10 +11,7 @@ import {
 import { calculateItemAmount, calculateFullFarmerPatti, calculateFullBuyerInvoice } from '../../calculations/billingEngine';
 import { getTodayString, formatCurrency, formatWeight } from '../../utils/formatters';
 import { TransactionItem, BuyerInvoiceItem } from '../../types';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
-import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/ui/Table';
+import { Button, Input, Select } from '../../components/ui';
 
 export default function NewTransaction() {
   const navigate = useNavigate();
@@ -40,21 +38,26 @@ export default function NewTransaction() {
   }, []);
 
   const loadData = async () => {
-    const [fData, bData, pData, sData] = await Promise.all([
-      getAllFarmers(), getAllBuyers(), getActiveProducts(), getSettings()
-    ]);
-    setFarmers(fData);
-    setBuyers(bData);
-    setProducts(pData);
-    setSettings(sData);
-    if (sData) setAwakNo(`AWK-${sData.nextAwakNo}`);
+    try {
+      const [fData, bData, pData, sData] = await Promise.all([
+        getAllFarmers(), getAllBuyers(), getActiveProducts(), getSettings()
+      ]);
+      setFarmers(fData || []);
+      setBuyers(bData || []);
+      setProducts(pData || []);
+      setSettings(sData || null);
+      if (sData) setAwakNo(`AWK-${sData.nextAwakNo}`);
+    } catch (err) {
+      toast.error('Failed to load transaction master data');
+      console.error(err);
+    }
   };
 
   const handleFarmerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const fId = e.target.value;
     setFarmerId(fId);
     const farmer = farmers.find(f => f.id === fId);
-    if (farmer) setVillage(farmer.village);
+    if (farmer) setVillage(farmer.village || '');
   };
 
   const handleItemChange = (index: number, field: keyof TransactionItem, value: any) => {
@@ -70,20 +73,34 @@ export default function NewTransaction() {
   };
 
   const addItem = () => setItems([...items, { id: nextItemId(), productId: '', bags: 0, weightKg: 0, ratePerQuintal: 0, amount: 0 }]);
-  const removeItem = (index: number) => items.length > 1 && setItems(items.filter((_, i) => i !== index));
+  
+  const removeItem = (index: number) => {
+    if (items.length > 1) {
+      setItems(items.filter((_, i) => i !== index));
+    } else {
+      toast('At least one commodity row is required', { icon: 'ℹ️' });
+    }
+  };
 
-  const validItems = items.filter(i => i.productId && i.weightKg > 0);
+  const validItems = items.filter(i => i.productId && Number(i.weightKg) > 0);
   const pattiPreview = settings ? calculateFullFarmerPatti(validItems, advance, settings.rates) : null;
   
-  // Prepare buyer invoice items mapped from transaction items
   const buyerInvoiceItems: BuyerInvoiceItem[] = validItems.map(i => ({
     id: i.id, farmerId, productId: i.productId, bags: i.bags, weightKg: i.weightKg, ratePerQuintal: i.ratePerQuintal, amount: i.amount
   }));
   const invoicePreview = settings ? calculateFullBuyerInvoice(buyerInvoiceItems, settings.rates) : null;
 
   const handleSave = async (action: 'AWAK' | 'PATTI' | 'INVOICE' | 'ALL') => {
-    if (!farmerId || !buyerId || validItems.length === 0) {
-      alert("Please fill all required fields: Farmer, Buyer, and at least 1 valid item.");
+    if (!farmerId) {
+      toast.error('Please select a farmer');
+      return;
+    }
+    if (!buyerId) {
+      toast.error('Please select a buyer');
+      return;
+    }
+    if (validItems.length === 0) {
+      toast.error('Please add at least 1 valid item with weight');
       return;
     }
 
@@ -96,13 +113,13 @@ export default function NewTransaction() {
       // 1. Save Awak
       const awakId = await addAwak({
         awakNo, date, saudaDate, farmerId, village, buyerId, items: validItems,
-        totalBags, totalWeight, totalAmount, advance, notes: 'Fast Transaction',
+        totalBags, totalWeight, totalAmount, advance, notes: 'Fast Quick Transaction',
         status: 'COMPLETED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
       });
 
       let nextSettings = { ...settings, nextAwakNo: settings.nextAwakNo + 1 };
 
-      // Inventory IN
+      // Inventory movements IN
       for (const item of validItems) {
         await addInventoryMovement({
           productId: item.productId, type: 'IN', quantityBags: item.bags, weightKg: item.weightKg,
@@ -133,7 +150,7 @@ export default function NewTransaction() {
         });
         nextSettings.nextBuyerInvoiceNo += 1;
 
-        // Inventory OUT
+        // Inventory movements OUT
         for (const item of validItems) {
           await addInventoryMovement({
             productId: item.productId, type: 'OUT', quantityBags: item.bags, weightKg: item.weightKg,
@@ -143,145 +160,289 @@ export default function NewTransaction() {
       }
 
       await updateSettings(nextSettings);
-      alert("Transaction Saved Successfully!");
+      toast.success('Transaction saved & processed successfully!');
       
       // Navigate based on action
-      if (action === 'PATTI' && pattiId) navigate(`/patti/view/${pattiId}`);
-      else if (action === 'INVOICE' && invoiceId) navigate(`/invoice/view/${invoiceId}`);
-      else navigate('/awak');
+      if (action === 'PATTI' && pattiId) navigate(`/farmer-patti/${pattiId}`);
+      else if (action === 'INVOICE' && invoiceId) navigate(`/buyer-invoice/${invoiceId}`);
+      else navigate('/bills');
 
     } catch (error) {
       console.error(error);
-      alert("Failed to save transaction.");
+      toast.error('Failed to save transaction');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-4 h-full bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold text-gray-800">Quick Transaction</h1>
+    <div className="space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            icon={<ArrowLeft size={16} />} 
+            onClick={() => navigate('/bills')}
+            className="text-gray-500 hover:text-gray-900"
+          >
+            Back
+          </Button>
+          <div className="h-4 w-px bg-gray-200" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-gray-900 tracking-tight">Quick Trading Terminal</h1>
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                <Zap size={11} className="text-[#C8920A]" /> POS Fast Entry
+              </span>
+            </div>
+            <p className="text-xs text-gray-500">Simultaneously record Awak Inward, Farmer Patti, and Buyer Invoice in one click</p>
+          </div>
+        </div>
+        <span className="font-mono text-xs px-2.5 py-1 bg-amber-50 text-amber-900 rounded-lg border border-amber-200 font-bold">
+          Ref: {awakNo}
+        </span>
       </div>
 
-      <div className="grid grid-cols-12 gap-4">
-        {/* Left Column: Info */}
-        <div className="col-span-12 lg:col-span-3 bg-white p-4 rounded shadow-sm border border-gray-200">
-          <h2 className="text-sm font-bold text-gray-600 mb-3 border-b pb-1">Info</h2>
-          <div className="space-y-3">
-            <Input label="Awak No" value={awakNo} disabled className="bg-gray-50 text-sm py-1" />
-            <Input label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} className="text-sm py-1" />
-            <Select label="Farmer" value={farmerId} onChange={handleFarmerChange}
-              options={[{ label: 'Select...', value: '' }, ...farmers.map(f => ({ label: f.name, value: f.id }))]}
-              className="text-sm py-1" />
-            <Input label="Village" value={village} onChange={e => setVillage(e.target.value)} className="text-sm py-1" />
-            <Select label="Buyer" value={buyerId} onChange={e => setBuyerId(e.target.value)}
-              options={[{ label: 'Select...', value: '' }, ...buyers.map(b => ({ label: b.name, value: b.id }))]}
-              className="text-sm py-1" />
-            <Input label="Sauda Date" type="date" value={saudaDate} onChange={e => setSaudaDate(e.target.value)} className="text-sm py-1" />
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        {/* Left Column: Trade Parties & Dates */}
+        <div className="xl:col-span-3 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="text-sm font-bold text-gray-800 pb-2 border-b border-gray-100 flex items-center justify-between">
+            <span>Trading Parties</span>
+          </div>
+
+          <div className="space-y-3.5">
+            <Input 
+              label="Transaction Date" 
+              type="date" 
+              value={date} 
+              onChange={e => setDate(e.target.value)} 
+              required 
+            />
+            <Input 
+              label="Sauda / Rate Date" 
+              type="date" 
+              value={saudaDate} 
+              onChange={e => setSaudaDate(e.target.value)} 
+            />
+
+            <Select 
+              label="Farmer (Seller)" 
+              value={farmerId} 
+              onChange={handleFarmerChange}
+              required
+              options={[{ label: 'Select Farmer...', value: '' }, ...farmers.map(f => ({ label: `${f.name} (${f.village || ''})`, value: f.id }))]}
+            />
+            <Input 
+              label="Village" 
+              value={village} 
+              onChange={e => setVillage(e.target.value)} 
+              placeholder="Origin village" 
+            />
+
+            <Select 
+              label="Buyer (Purchaser)" 
+              value={buyerId} 
+              onChange={e => setBuyerId(e.target.value)}
+              required
+              options={[{ label: 'Select Buyer...', value: '' }, ...buyers.map(b => ({ label: `${b.name} - ${b.city || ''}`, value: b.id }))]}
+            />
+
+            <div className="pt-2 border-t border-gray-100">
+              <Input 
+                label="Advance Paid to Farmer (₹)" 
+                type="number" 
+                min="0"
+                value={advance || ''} 
+                onChange={e => setAdvance(Number(e.target.value))} 
+                placeholder="0"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Middle Column: Items */}
-        <div className="col-span-12 lg:col-span-6 bg-white p-4 rounded shadow-sm border border-gray-200">
-          <div className="flex justify-between items-center mb-3 border-b pb-1">
-            <h2 className="text-sm font-bold text-gray-600">Items</h2>
-            <Button onClick={addItem} size="sm" variant="outline" icon={<Plus size={14} />} className="text-xs h-7 py-0">Add</Button>
-          </div>
-          
-          <div className="overflow-x-auto min-h-[300px]">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-gray-100 text-gray-600 text-xs border-b">
-                <tr>
-                  <th className="p-2 font-medium">Item</th>
-                  <th className="p-2 font-medium text-right w-16">Bags</th>
-                  <th className="p-2 font-medium text-right w-20">Weight</th>
-                  <th className="p-2 font-medium text-right w-20">Rate</th>
-                  <th className="p-2 font-medium text-right w-24">Amount</th>
-                  <th className="p-2 w-8"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, idx) => (
-                  <tr key={item.id} className="border-b border-gray-50">
-                    <td className="p-1">
-                      <select value={item.productId} onChange={e => handleItemChange(idx, 'productId', e.target.value)} 
-                        className="w-full border-gray-300 rounded shadow-sm text-sm focus:ring-amber-500 focus:border-amber-500 p-1.5">
-                        <option value="">Select...</option>
-                        {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
-                    </td>
-                    <td className="p-1"><input type="number" value={item.bags || ''} onChange={e => handleItemChange(idx, 'bags', Number(e.target.value))} className="w-full border-gray-300 rounded shadow-sm text-sm text-right p-1.5" /></td>
-                    <td className="p-1"><input type="number" step="0.001" value={item.weightKg || ''} onChange={e => handleItemChange(idx, 'weightKg', Number(e.target.value))} className="w-full border-gray-300 rounded shadow-sm text-sm text-right p-1.5" /></td>
-                    <td className="p-1"><input type="number" value={item.ratePerQuintal || ''} onChange={e => handleItemChange(idx, 'ratePerQuintal', Number(e.target.value))} className="w-full border-gray-300 rounded shadow-sm text-sm text-right p-1.5" /></td>
-                    <td className="p-2 text-right font-medium text-gray-800">{formatCurrency(item.amount)}</td>
-                    <td className="p-1 text-center">
-                      <button onClick={() => removeItem(idx)} className="text-red-400 hover:text-red-600"><X size={14} /></button>
-                    </td>
+        {/* Center Column: Commodity Lines */}
+        <div className="xl:col-span-6 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+              <span className="text-sm font-bold text-gray-800">Commodity Trade Lines</span>
+              <Button 
+                onClick={addItem} 
+                size="sm" 
+                variant="outline" 
+                icon={<Plus size={14} />}
+              >
+                Add Line
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <th className="pb-2">Grade</th>
+                    <th className="pb-2 w-20 text-right">Bags</th>
+                    <th className="pb-2 w-24 text-right">Weight (Kg)</th>
+                    <th className="pb-2 w-24 text-right">Rate / Qtl</th>
+                    <th className="pb-2 w-28 text-right">Amount (₹)</th>
+                    <th className="pb-2 w-8"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {items.map((item, idx) => (
+                    <tr key={item.id} className="hover:bg-gray-50/50">
+                      <td className="py-2 pr-1.5">
+                        <select 
+                          value={item.productId} 
+                          onChange={e => handleItemChange(idx, 'productId', e.target.value)}
+                          className="w-full h-8 px-2 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#C8920A]"
+                        >
+                          <option value="">Select Variety...</option>
+                          {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </td>
+                      <td className="py-2 px-1">
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={item.bags || ''} 
+                          onChange={e => handleItemChange(idx, 'bags', Number(e.target.value))} 
+                          className="w-full h-8 px-1.5 text-xs text-right border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#C8920A]" 
+                          placeholder="0"
+                        />
+                      </td>
+                      <td className="py-2 px-1">
+                        <input 
+                          type="number" 
+                          step="0.1" 
+                          min="0"
+                          value={item.weightKg || ''} 
+                          onChange={e => handleItemChange(idx, 'weightKg', Number(e.target.value))} 
+                          className="w-full h-8 px-1.5 text-xs text-right border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#C8920A]" 
+                          placeholder="0.0"
+                        />
+                      </td>
+                      <td className="py-2 px-1">
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={item.ratePerQuintal || ''} 
+                          onChange={e => handleItemChange(idx, 'ratePerQuintal', Number(e.target.value))} 
+                          className="w-full h-8 px-1.5 text-xs text-right border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#C8920A]" 
+                          placeholder="0"
+                        />
+                      </td>
+                      <td className="py-2 px-1 text-right font-mono font-bold text-xs text-gray-900">
+                        {formatCurrency(item.amount)}
+                      </td>
+                      <td className="py-2 pl-1 text-center">
+                        <button 
+                          onClick={() => removeItem(idx)} 
+                          className="p-1 text-gray-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                          title="Remove item"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="mt-4 pt-4 border-t flex justify-end items-center">
-            <span className="text-sm font-medium mr-3">Advance (₹):</span>
-            <input type="number" value={advance || ''} onChange={e => setAdvance(Number(e.target.value))} className="w-32 border-gray-300 rounded shadow-sm text-sm text-right p-1.5" />
+
+          <div className="pt-4 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
+            <span>{validItems.length} active trade line(s)</span>
+            <div className="font-bold text-sm text-gray-900">
+              Gross Value: {formatCurrency(validItems.reduce((acc, i) => acc + i.amount, 0))}
+            </div>
           </div>
         </div>
 
-        {/* Right Column: Previews */}
-        <div className="col-span-12 lg:col-span-3 space-y-4 flex flex-col h-full">
-          
-          {/* Farmer Patti Preview */}
-          <div className="bg-amber-50 p-3 rounded border border-amber-200 flex-1">
-            <h3 className="text-xs font-bold text-amber-800 mb-2 border-b border-amber-200 pb-1">Farmer Patti Preview</h3>
-            {pattiPreview ? (
-              <div className="space-y-1.5 text-xs text-amber-900">
-                <div className="flex justify-between"><span>Amount:</span><span>{formatCurrency(pattiPreview.totalAmount)}</span></div>
-                <div className="flex justify-between"><span>Container (-):</span><span>{formatCurrency(pattiPreview.container)}</span></div>
-                <div className="flex justify-between font-bold border-t border-amber-200 pt-1"><span>Gross:</span><span>{formatCurrency(pattiPreview.gross)}</span></div>
-                <div className="flex justify-between"><span>Hamali (-):</span><span>{formatCurrency(pattiPreview.hamali)}</span></div>
-                <div className="flex justify-between"><span>Tolai (-):</span><span>{formatCurrency(pattiPreview.tolai)}</span></div>
-                <div className="flex justify-between text-red-600"><span>Advance (-):</span><span>{formatCurrency(advance)}</span></div>
-                <div className="flex justify-between font-bold text-sm pt-1 border-t-2 border-amber-300 text-green-700">
-                  <span>Patti Amt:</span><span>{formatCurrency(pattiPreview.pattiAmount)}</span>
-                </div>
+        {/* Right Column: Side-by-Side Settlement & Invoicing */}
+        <div className="xl:col-span-3 space-y-4 flex flex-col justify-between">
+          <div className="space-y-4">
+            {/* Farmer Patti Box */}
+            <div className="bg-amber-50/60 border border-amber-200 rounded-2xl p-4 shadow-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-amber-200/80">
+                <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                  <FileText size={13} className="text-[#C8920A]" /> Farmer Settlement
+                </span>
+                <span className="text-[10px] text-amber-700 font-semibold uppercase">Patti</span>
               </div>
-            ) : <div className="text-xs text-amber-600/50">Awaiting items...</div>}
+              {pattiPreview ? (
+                <div className="space-y-1.5 text-xs text-amber-900 mt-2.5">
+                  <div className="flex justify-between"><span>Produce Amount:</span><span className="font-mono">{formatCurrency(pattiPreview.totalAmount)}</span></div>
+                  <div className="flex justify-between text-amber-700"><span>Less Container (-):</span><span className="font-mono">-{formatCurrency(pattiPreview.container)}</span></div>
+                  <div className="flex justify-between font-semibold border-t border-amber-200/60 pt-1"><span>Gross Base:</span><span className="font-mono">{formatCurrency(pattiPreview.gross)}</span></div>
+                  <div className="flex justify-between text-amber-700"><span>Less Hamali (-):</span><span className="font-mono">-{formatCurrency(pattiPreview.hamali)}</span></div>
+                  <div className="flex justify-between text-amber-700"><span>Less Tolai (-):</span><span className="font-mono">-{formatCurrency(pattiPreview.tolai)}</span></div>
+                  {advance > 0 && (
+                    <div className="flex justify-between text-rose-600 font-semibold"><span>Less Advance (-):</span><span className="font-mono">-{formatCurrency(advance)}</span></div>
+                  )}
+                  <div className="flex justify-between font-bold text-sm pt-2 border-t-2 border-amber-300 text-emerald-800">
+                    <span>Farmer Payable:</span><span className="font-mono">{formatCurrency(pattiPreview.pattiAmount)}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs text-amber-700/60 py-4 text-center">Add produce items to calculate</div>
+              )}
+            </div>
+
+            {/* Buyer Invoice Box */}
+            <div className="bg-sky-50/60 border border-sky-200 rounded-2xl p-4 shadow-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-sky-200/80">
+                <span className="text-xs font-bold text-sky-900 flex items-center gap-1.5">
+                  <Receipt size={13} className="text-sky-600" /> Buyer Invoice
+                </span>
+                <span className="text-[10px] text-sky-700 font-semibold uppercase">Tax Invoice</span>
+              </div>
+              {invoicePreview ? (
+                <div className="space-y-1.5 text-xs text-sky-900 mt-2.5">
+                  <div className="flex justify-between"><span>Produce Amount:</span><span className="font-mono">{formatCurrency(invoicePreview.totalAmount)}</span></div>
+                  <div className="flex justify-between text-sky-700"><span>Adat Comm (+):</span><span className="font-mono">+{formatCurrency(invoicePreview.adat)}</span></div>
+                  <div className="flex justify-between text-sky-700"><span>Levy/Cess (+):</span><span className="font-mono">+{formatCurrency(invoicePreview.levy)}</span></div>
+                  <div className="flex justify-between text-sky-700"><span>GST (5%) (+):</span><span className="font-mono">+{formatCurrency(invoicePreview.cgst + invoicePreview.sgst)}</span></div>
+                  <div className="flex justify-between font-bold text-sm pt-2 border-t-2 border-sky-300 text-sky-900">
+                    <span>Buyer Due:</span><span className="font-mono">{formatCurrency(invoicePreview.payable)}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs text-sky-700/60 py-4 text-center">Add produce items to calculate</div>
+              )}
+            </div>
           </div>
 
-          {/* Buyer Invoice Preview */}
-          <div className="bg-blue-50 p-3 rounded border border-blue-200 flex-1">
-            <h3 className="text-xs font-bold text-blue-800 mb-2 border-b border-blue-200 pb-1">Buyer Invoice Preview</h3>
-            {invoicePreview ? (
-              <div className="space-y-1.5 text-xs text-blue-900">
-                <div className="flex justify-between"><span>Amount:</span><span>{formatCurrency(invoicePreview.totalAmount)}</span></div>
-                <div className="flex justify-between"><span>Adat (+):</span><span>{formatCurrency(invoicePreview.adat)}</span></div>
-                <div className="flex justify-between"><span>Container (+):</span><span>{formatCurrency(invoicePreview.container)}</span></div>
-                <div className="flex justify-between"><span>Levy (+):</span><span>{formatCurrency(invoicePreview.levy)}</span></div>
-                <div className="flex justify-between font-bold border-t border-blue-200 pt-1"><span>Comp. Supply:</span><span>{formatCurrency(invoicePreview.compositeSupply)}</span></div>
-                <div className="flex justify-between"><span>CGST (+):</span><span>{formatCurrency(invoicePreview.cgst)}</span></div>
-                <div className="flex justify-between"><span>SGST (+):</span><span>{formatCurrency(invoicePreview.sgst)}</span></div>
-                <div className="flex justify-between font-bold border-t border-blue-200 pt-1"><span>Net Amount:</span><span>{formatCurrency(invoicePreview.netAmount)}</span></div>
-                <div className="flex justify-between text-red-600"><span>TDS (-):</span><span>{formatCurrency(invoicePreview.tds)}</span></div>
-                <div className="flex justify-between font-bold text-sm pt-1 border-t-2 border-blue-300 text-blue-800">
-                  <span>Payable:</span><span>{formatCurrency(invoicePreview.payable)}</span>
-                </div>
-              </div>
-            ) : <div className="text-xs text-blue-600/50">Awaiting items...</div>}
-          </div>
-
-          {/* Actions */}
+          {/* Action Buttons */}
           <div className="space-y-2 pt-2">
-            <Button onClick={() => handleSave('ALL')} disabled={loading} className="w-full bg-green-600 hover:bg-green-700 py-2 h-auto text-sm" icon={<Save size={16} />}>
-              Save All Complete
+            <Button 
+              onClick={() => handleSave('ALL')} 
+              loading={loading}
+              variant="success" 
+              className="w-full justify-center" 
+              icon={<CheckCircle2 size={16} />}
+            >
+              Complete & Generate All (Awak + Patti + Inv)
             </Button>
             <div className="grid grid-cols-2 gap-2">
-              <Button onClick={() => handleSave('PATTI')} disabled={loading} variant="outline" className="w-full border-amber-500 text-amber-700 hover:bg-amber-50 py-1.5 text-xs h-auto">
-                Save + Patti
+              <Button 
+                onClick={() => handleSave('PATTI')} 
+                loading={loading}
+                variant="outline" 
+                size="sm"
+                className="justify-center"
+              >
+                + Farmer Patti
               </Button>
-              <Button onClick={() => handleSave('INVOICE')} disabled={loading} variant="outline" className="w-full border-blue-500 text-blue-700 hover:bg-blue-50 py-1.5 text-xs h-auto">
-                Save + Invoice
+              <Button 
+                onClick={() => handleSave('INVOICE')} 
+                loading={loading}
+                variant="secondary" 
+                size="sm"
+                className="justify-center text-sky-700 border-sky-300 hover:bg-sky-50"
+              >
+                + Buyer Invoice
               </Button>
             </div>
           </div>

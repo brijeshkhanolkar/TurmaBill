@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal } from './Modal';
 import { Button } from './Button';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
 
 export interface ConfirmDialogProps {
   isOpen: boolean;
@@ -11,9 +11,9 @@ export interface ConfirmDialogProps {
   cancelLabel?: string;
   isDanger?: boolean;
   onConfirm: () => void;
-  onCancel: () => void;
+  onCancel?: () => void;
   isLoading?: boolean;
-  // Legacy names retained so list pages can use the same dialog safely.
+  // Legacy names retained so all pages work seamlessly.
   onClose?: () => void;
   confirmText?: string;
   variant?: 'danger' | 'default';
@@ -33,9 +33,10 @@ export function ConfirmDialog({
   confirmText,
   variant
 }: ConfirmDialogProps) {
-  const close = onClose ?? onCancel;
+  const close = onClose ?? onCancel ?? (() => {});
   const label = confirmText ?? confirmLabel;
   const dangerous = variant === 'danger' || isDanger;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -44,11 +45,12 @@ export function ConfirmDialog({
       size="sm"
       footer={
         <>
-          <Button variant="secondary" onClick={close} disabled={isLoading}>
+          <Button variant="secondary" size="sm" onClick={close} disabled={isLoading}>
             {cancelLabel}
           </Button>
           <Button 
             variant={dangerous ? 'danger' : 'primary'} 
+            size="sm"
             onClick={onConfirm} 
             isLoading={isLoading}
           >
@@ -57,14 +59,15 @@ export function ConfirmDialog({
         </>
       }
     >
-      <div className="flex items-start">
-        <div className={`shrink-0 flex items-center justify-center h-10 w-10 rounded-full ${dangerous ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'} mr-4`}>
-          <AlertTriangle size={20} />
+      <div className="flex items-start gap-4">
+        <div className={`shrink-0 flex items-center justify-center h-10 w-10 rounded-xl ${dangerous ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+          {dangerous ? <AlertTriangle size={20} /> : <Info size={20} />}
         </div>
-        <div>
-          <p className="text-sm text-gray-600">{message}</p>
+        <div className="pt-0.5">
+          <p className="text-sm text-gray-600 leading-relaxed">{message}</p>
         </div>
       </div>
     </Modal>
   );
 }
+
