@@ -4,8 +4,8 @@ import {
   Activity, Users, ShoppingCart, Package, 
   FileText, Plus, Eye, Printer, TrendingUp, AlertCircle 
 } from 'lucide-react';
-import { getAllAwaks, getAllBuyerInvoices, getInventoryStock } from '../database/services';
-import { Awak, BuyerInvoice, InventoryStock } from '../types';
+import { getAllAwaks, getAllBuyerInvoices, getInventoryStock, getAllFarmerPattis } from '../database/services';
+import { Awak, BuyerInvoice, InventoryStock, FarmerPatti } from '../types';
 import { formatCurrency, formatDate, formatWeight, getTodayString } from '../utils/formatters';
 import { Button, Table, Thead, Tbody, Tr, Th, Td, Badge } from '../components/ui';
 
@@ -36,25 +36,30 @@ export default function Dashboard() {
         getInventoryStock()
       ]);
 
-      // Calculate stats
-      const todayAwaks = awaks.filter(a => a.date === today);
+      // Calculate stats - use correct field names
+      const todayAwaks = awaks.filter(a => a.awakDate === today);
       const todayInvoices = invoices.filter(i => i.date === today);
       
-      const todayPurchase = todayAwaks.reduce((sum, a) => sum + (a.totalAmount || 0), 0);
+      const todayPurchase = todayAwaks.reduce((sum, a) => {
+        const itemTotal = a.items?.reduce((s, item) => s + (item.amount || 0), 0) || 0;
+        return sum + itemTotal;
+      }, 0);
       const todaySales = todayInvoices.reduce((sum, i) => sum + (i.totalAmount || 0), 0);
-      const stockBags = stock.reduce((sum, s) => sum + s.quantityBags, 0);
-      const pendingAwaks = awaks.filter(a => a.status === 'PENDING').length;
+      const stockBags = stock.reduce((sum, s) => sum + (s.currentBags || 0), 0);
 
       setStats({
         todayTransactions: todayAwaks.length + todayInvoices.length,
         todayPurchase,
         todaySales,
         currentStockBags: stockBags,
-        pendingItems: pendingAwaks
+        pendingItems: 0
       });
 
-      // Recent 10 awaks
-      setRecentAwaks(awaks.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10));
+      // Recent 10 awaks sorted by awakDate desc
+      const sorted = [...awaks].sort((a, b) => {
+        return (b.awakDate || '').localeCompare(a.awakDate || '');
+      });
+      setRecentAwaks(sorted.slice(0, 10));
     } catch (error) {
       console.error('Error loading dashboard data', error);
     } finally {
@@ -103,12 +108,12 @@ export default function Dashboard() {
           <span className="text-xl font-bold text-gray-800">{stats.currentStockBags} <span className="text-sm font-normal text-gray-500">bags</span></span>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded p-4 border-l-4 border-l-red-500 shadow-sm flex flex-col">
+        <div className="bg-white border border-gray-200 rounded p-4 border-l-4 border-l-amber-600 shadow-sm flex flex-col">
           <div className="flex items-center text-gray-500 mb-1">
-            <AlertCircle size={16} className="mr-2" />
-            <span className="text-xs font-medium uppercase">Pending Items</span>
+            <FileText size={16} className="mr-2" />
+            <span className="text-xs font-medium uppercase">Total Awaks</span>
           </div>
-          <span className="text-xl font-bold text-gray-800">{stats.pendingItems}</span>
+          <span className="text-xl font-bold text-gray-800">{recentAwaks.length}</span>
         </div>
       </div>
 
@@ -150,7 +155,8 @@ export default function Dashboard() {
                 <Th>Awak No</Th>
                 <Th>Date</Th>
                 <Th>Farmer</Th>
-                <Th>Product</Th>
+                <Th>Buyer</Th>
+                <Th>Item</Th>
                 <Th className="text-right">Bags</Th>
                 <Th className="text-right">Weight</Th>
                 <Th className="text-right">Amount</Th>
@@ -161,33 +167,39 @@ export default function Dashboard() {
             <Tbody>
               {recentAwaks.length === 0 ? (
                 <Tr>
-                  <Td colSpan={9} className="text-center text-gray-500 py-4">
+                  <Td colSpan={10} className="text-center text-gray-500 py-4">
                     {loading ? 'Loading...' : 'No recent awaks found'}
                   </Td>
                 </Tr>
               ) : (
-                recentAwaks.map((awak) => (
-                  <Tr key={awak.id}>
-                    <Td className="font-medium">{awak.awakNo}</Td>
-                    <Td>{formatDate(awak.date)}</Td>
-                    <Td>{awak.farmerName}</Td>
-                    <Td>{awak.productName}</Td>
-                    <Td className="text-right">{awak.totalBags}</Td>
-                    <Td className="text-right">{formatWeight(awak.totalWeight)}</Td>
-                    <Td className="text-right">{formatCurrency(awak.totalAmount || 0)}</Td>
-                    <Td className="text-center">
-                      <Badge variant={awak.status === 'COMPLETED' ? 'success' : awak.status === 'PENDING' ? 'warning' : 'default'}>
-                        {awak.status}
-                      </Badge>
-                    </Td>
-                    <Td className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" icon={<Eye size={14} />} onClick={() => navigate(`/awak/${awak.id}/edit`)} />
-                        <Button variant="ghost" size="sm" icon={<Printer size={14} />} onClick={() => window.print()} />
-                      </div>
-                    </Td>
-                  </Tr>
-                ))
+                recentAwaks.map((awak) => {
+                  const totalBags = awak.items?.reduce((s, i) => s + (i.bags || 0), 0) || 0;
+                  const totalWeight = awak.items?.reduce((s, i) => s + (i.weightKg || 0), 0) || 0;
+                  const totalAmount = awak.items?.reduce((s, i) => s + (i.amount || 0), 0) || 0;
+                  const firstItem = awak.items?.[0];
+                  return (
+                    <Tr key={awak.id}>
+                      <Td className="font-medium">{awak.awakNo}</Td>
+                      <Td>{formatDate(awak.awakDate)}</Td>
+                      <Td>{awak.farmerName}</Td>
+                      <Td>{awak.buyerName}</Td>
+                      <Td>{firstItem?.productName || '-'}</Td>
+                      <Td className="text-right">{totalBags}</Td>
+                      <Td className="text-right">{formatWeight(totalWeight)}</Td>
+                      <Td className="text-right">{formatCurrency(totalAmount)}</Td>
+                      <Td className="text-center">
+                        <Badge variant={awak.status === 'active' ? 'success' : 'default'}>
+                          {awak.status}
+                        </Badge>
+                      </Td>
+                      <Td className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="sm" icon={<Eye size={14} />} onClick={() => navigate(`/awak/${awak.id}/edit`)} />
+                        </div>
+                      </Td>
+                    </Tr>
+                  );
+                })
               )}
             </Tbody>
           </Table>
