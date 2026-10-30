@@ -15,6 +15,7 @@ import {
   Settings,
   X,
 } from 'lucide-react';
+import { useAppAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -62,6 +63,7 @@ const NAV_SECTIONS = [
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const { currentUser } = useAppAuth();
   const handleLinkClick = () => {
     if (window.innerWidth < 768) onClose();
   };
@@ -128,9 +130,26 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           ))}
         </nav>
 
+        {/* User Card */}
+        <div style={{ padding: '10px 12px', borderTop: '1px solid var(--border)' }}>
+          <NavLink
+            to="/user-profile"
+            onClick={handleLinkClick}
+            className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-gray-50 transition-colors"
+          >
+            <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 text-[#C8920A] flex items-center justify-center font-bold text-xs shrink-0">
+              {currentUser.name ? currentUser.name.slice(0, 1).toUpperCase() : 'U'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-semibold text-gray-800 truncate">{currentUser.name}</div>
+              <div className="text-[10px] text-gray-500 truncate">{currentUser.marketLocation}</div>
+            </div>
+          </NavLink>
+        </div>
+
         {/* Footer */}
-        <div style={{ padding: '12px', borderTop: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-subtle)', textAlign: 'center' }}>
+        <div style={{ padding: '10px 12px', borderTop: '1px solid #F3F4F6' }}>
+          <div style={{ fontSize: 10, color: 'var(--text-subtle)', textAlign: 'center' }}>
             v1.0.0 · TurmaBill
           </div>
         </div>

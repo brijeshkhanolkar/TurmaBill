@@ -3,6 +3,7 @@ import { Menu, Search, PlusCircle, Bell, User, X, FileText, Users, Building2, Pa
 import { useNavigate } from 'react-router-dom';
 import { globalSearch } from '../../database/services';
 import type { SearchResult } from '../../types';
+import { UserMenu } from '../auth/UserMenu';
 
 interface TopBarProps {
   onMenuClick: () => void;
@@ -202,14 +203,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
           <span className="notif-badge" />
         </button>
 
-        <div
-          className="topbar-avatar"
-          title="Admin"
-          id="user-avatar"
-          style={{ fontSize: 12 }}
-        >
-          A
-        </div>
+        <UserMenu />
       </div>
     </header>
   );

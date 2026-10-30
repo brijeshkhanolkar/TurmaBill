@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { getSettings, updateSettings } from '../../database/services';
 import { AppSettings } from '../../types';
-import { Save, Building2, BarChart2, Hash, Shield, RefreshCw } from 'lucide-react';
+import { Save, Building2, BarChart2, Hash, Shield, RefreshCw, Key, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAppAuth } from '../../context/AuthContext';
+
 
 const LabeledInput = ({
   label, type = 'text', value, onChange, placeholder, step, min
@@ -50,7 +52,49 @@ const SectionCard = ({ icon: Icon, title, children, accentColor = 'var(--turmeri
   </div>
 );
 
+function ClerkSettingsSection() {
+  const { isClerkEnabled, clerkKey, openAuthModal } = useAppAuth();
+
+  return (
+    <SectionCard icon={ShieldCheck} title="Authentication & Clerk Security" accentColor="#2563EB">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'between', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+              Authentication Status: {isClerkEnabled ? (
+                <span style={{ color: '#16A34A', fontWeight: 700 }}>● Clerk Connected</span>
+              ) : (
+                <span style={{ color: '#C8920A', fontWeight: 700 }}>● Local Demo Mode</span>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+              {isClerkEnabled ? (
+                <span>Publishable Key: <code>{clerkKey?.slice(0, 16)}...</code></span>
+              ) : (
+                <span>No Clerk key connected. Running with offline-capable trader demo account.</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={openAuthModal}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <Key size={14} className="text-[#C8920A]" />
+            {isClerkEnabled ? 'Manage Clerk Key' : 'Connect Clerk Key'}
+          </button>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
 const DEFAULT_SETTINGS: AppSettings = {
+
   businessName: '',
   address: '',
   plotNo: '',
@@ -270,6 +314,9 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
         </SectionCard>
+
+        {/* Clerk Auth Section */}
+        <ClerkSettingsSection />
       </div>
 
       {/* Save button at bottom */}

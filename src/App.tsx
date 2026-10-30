@@ -24,6 +24,15 @@ import { InventoryPage } from './pages/inventory/InventoryPage';
 import { BillsPage } from './pages/bills/BillsPage';
 import { ReportsPage } from './pages/reports/ReportsPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
+import SignInPage from './pages/auth/SignInPage';
+import SignUpPage from './pages/auth/SignUpPage';
+import UserProfilePage from './pages/auth/UserProfilePage';
+import SSOCallbackPage from './pages/auth/SSOCallbackPage';
+import { AuthProvider } from './context/AuthContext';
+
+import { ClerkAuthProvider } from './components/auth/ClerkAuthProvider';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { ClerkSetupModal } from './components/auth/ClerkSetupModal';
 import { seedDatabase } from './database/seeds';
 
 function App() {
@@ -49,7 +58,7 @@ function App() {
         </div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.4px', color: '#111827' }}>TurmaBill</div>
-          <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>Loading your data…</div>
+          <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>Loading your trade data…</div>
         </div>
         <style>{`@keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.06); opacity: .85; } }`}</style>
       </div>
@@ -57,90 +66,115 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 3500,
-          style: {
-            background: '#ffffff',
-            color: '#111827',
-            border: '1px solid #E5E7EB',
-            borderRadius: '10px',
-            fontSize: '13px',
-            padding: '10px 14px',
-            boxShadow: '0 4px 12px rgba(0,0,0,.10)',
-            fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
-          },
-          success: { iconTheme: { primary: '#16A34A', secondary: '#fff' } },
-          error:   { iconTheme: { primary: '#DC2626', secondary: '#fff' } },
-        }}
-      />
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="dashboard" element={<Dashboard />} />
+    <AuthProvider>
+      <ClerkAuthProvider>
+        <BrowserRouter>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3500,
+              style: {
+                background: '#ffffff',
+                color: '#111827',
+                border: '1px solid #E5E7EB',
+                borderRadius: '10px',
+                fontSize: '13px',
+                padding: '10px 14px',
+                boxShadow: '0 4px 12px rgba(0,0,0,.10)',
+                fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
+              },
+              success: { iconTheme: { primary: '#16A34A', secondary: '#fff' } },
+              error:   { iconTheme: { primary: '#DC2626', secondary: '#fff' } },
+            }}
+          />
+          <ClerkSetupModal />
           
-          {/* Farmers */}
-          <Route path="farmers" element={<FarmerList />} />
-          <Route path="farmers/new" element={<FarmerForm />} />
-          <Route path="farmers/:id/edit" element={<FarmerForm />} />
-          <Route path="farmers/:id" element={<FarmerDetail />} />
-          
-          {/* Buyers */}
-          <Route path="buyers" element={<BuyerList />} />
-          <Route path="buyers/new" element={<BuyerForm />} />
-          <Route path="buyers/:id/edit" element={<BuyerForm />} />
-          <Route path="buyers/:id" element={<BuyerDetail />} />
-          
-          {/* Products */}
-          <Route path="products" element={<ProductList />} />
-          <Route path="products/new" element={<ProductForm />} />
-          <Route path="products/:id/edit" element={<ProductForm />} />
-          
-          {/* Awak / Inward */}
-          <Route path="awak" element={<AwakList />} />
-          <Route path="awak/new" element={<AwakForm />} />
-          <Route path="awak/:id/edit" element={<AwakForm />} />
-          <Route path="inward" element={<Navigate to="/awak" replace />} />
-          <Route path="awaks" element={<Navigate to="/awak" replace />} />
-          
-          {/* New Transaction (quick entry) */}
-          <Route path="transactions/new" element={<NewTransaction />} />
-          <Route path="transaction/new" element={<NewTransaction />} />
-          
-          {/* Farmer Patti */}
-          <Route path="farmer-patti" element={<FarmerPattiList />} />
-          <Route path="farmer-patti/new" element={<FarmerPattiForm />} />
-          <Route path="farmer-patti/new/:awakId" element={<FarmerPattiForm />} />
-          <Route path="farmer-patti/:id" element={<FarmerPattiView />} />
-          <Route path="farmer-patti/:id/edit" element={<FarmerPattiForm />} />
-          <Route path="patti" element={<Navigate to="/farmer-patti" replace />} />
-          <Route path="patti/view/:id" element={<FarmerPattiView />} />
-          
-          {/* Buyer Invoice */}
-          <Route path="buyer-invoice" element={<BuyerInvoiceList />} />
-          <Route path="buyer-invoice/new" element={<BuyerInvoiceForm />} />
-          <Route path="buyer-invoice/:id" element={<BuyerInvoiceView />} />
-          <Route path="buyer-invoice/:id/edit" element={<BuyerInvoiceForm />} />
-          <Route path="invoice" element={<Navigate to="/buyer-invoice" replace />} />
-          <Route path="invoice/view/:id" element={<BuyerInvoiceView />} />
-          
-          {/* Inventory */}
-          <Route path="inventory" element={<InventoryPage />} />
-          
-          {/* Bills */}
-          <Route path="bills" element={<BillsPage />} />
-          
-          {/* Reports */}
-          <Route path="reports" element={<ReportsPage />} />
-          
-          {/* Settings */}
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+          <Routes>
+            {/* Public Authentication Pages */}
+            <Route path="/sign-in/*" element={<SignInPage />} />
+            <Route path="/sign-up/*" element={<SignUpPage />} />
+            <Route path="/forgot-password" element={<SignInPage />} />
+            <Route path="/sso-callback/*" element={<SSOCallbackPage />} />
+
+            {/* Protected Core Application */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Dashboard />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              
+              {/* Farmers */}
+              <Route path="farmers" element={<FarmerList />} />
+              <Route path="farmers/new" element={<FarmerForm />} />
+              <Route path="farmers/:id/edit" element={<FarmerForm />} />
+              <Route path="farmers/:id" element={<FarmerDetail />} />
+              
+              {/* Buyers */}
+              <Route path="buyers" element={<BuyerList />} />
+              <Route path="buyers/new" element={<BuyerForm />} />
+              <Route path="buyers/:id/edit" element={<BuyerForm />} />
+              <Route path="buyers/:id" element={<BuyerDetail />} />
+              
+              {/* Products */}
+              <Route path="products" element={<ProductList />} />
+              <Route path="products/new" element={<ProductForm />} />
+              <Route path="products/:id/edit" element={<ProductForm />} />
+              
+              {/* Awak / Inward */}
+              <Route path="awak" element={<AwakList />} />
+              <Route path="awak/new" element={<AwakForm />} />
+              <Route path="awak/:id/edit" element={<AwakForm />} />
+              <Route path="inward" element={<Navigate to="/awak" replace />} />
+              <Route path="awaks" element={<Navigate to="/awak" replace />} />
+              
+              {/* New Transaction (quick entry) */}
+              <Route path="transactions/new" element={<NewTransaction />} />
+              <Route path="transaction/new" element={<NewTransaction />} />
+              
+              {/* Farmer Patti */}
+              <Route path="farmer-patti" element={<FarmerPattiList />} />
+              <Route path="farmer-patti/new" element={<FarmerPattiForm />} />
+              <Route path="farmer-patti/new/:awakId" element={<FarmerPattiForm />} />
+              <Route path="farmer-patti/:id" element={<FarmerPattiView />} />
+              <Route path="farmer-patti/:id/edit" element={<FarmerPattiForm />} />
+              <Route path="patti" element={<Navigate to="/farmer-patti" replace />} />
+              <Route path="patti/view/:id" element={<FarmerPattiView />} />
+              
+              {/* Buyer Invoice */}
+              <Route path="buyer-invoice" element={<BuyerInvoiceList />} />
+              <Route path="buyer-invoice/new" element={<BuyerInvoiceForm />} />
+              <Route path="buyer-invoice/:id" element={<BuyerInvoiceView />} />
+              <Route path="buyer-invoice/:id/edit" element={<BuyerInvoiceForm />} />
+              <Route path="invoice" element={<Navigate to="/buyer-invoice" replace />} />
+              <Route path="invoice/view/:id" element={<BuyerInvoiceView />} />
+              
+              {/* Inventory */}
+              <Route path="inventory" element={<InventoryPage />} />
+              
+              {/* Bills */}
+              <Route path="bills" element={<BillsPage />} />
+              
+              {/* Reports */}
+              <Route path="reports" element={<ReportsPage />} />
+              
+              {/* Settings */}
+              <Route path="settings" element={<SettingsPage />} />
+
+              {/* User Profile */}
+              <Route path="user-profile/*" element={<UserProfilePage />} />
+              <Route path="profile" element={<Navigate to="/user-profile" replace />} />
+              
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ClerkAuthProvider>
+    </AuthProvider>
   );
 }
 
