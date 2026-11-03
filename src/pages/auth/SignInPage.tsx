@@ -92,8 +92,8 @@ export default function SignInPage() {
 
     setTimeout(() => {
       loginLocalUser({
-        email: 'brijeshkhanolkar@gmail.com',
-        name: 'Brijesh Khanolkar',
+        email: 'yashrajalurkur@gmail.com',
+        name: 'Yashraj Alurkur',
         role: 'Admin',
         marketLocation: 'Sangli APMC Yard',
       });
@@ -109,7 +109,7 @@ export default function SignInPage() {
   const handleDemoSignIn = () => {
     loginLocalUser({
       id: 'usr-demo-trader',
-      name: 'Brijesh Khanolkar',
+      name: 'Yashraj Alurkur',
       email: 'admin@turmabill.local',
       role: 'Admin',
       marketLocation: 'Sangli APMC Yard',
@@ -121,7 +121,7 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50/40 via-white to-gray-50 flex items-center justify-center p-4 sm:p-6">
       {isClerkEnabled && <ClerkSessionWatcher />}
-      
+
       <div className="w-full max-w-5xl bg-white border border-gray-100 rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[640px]">
         {/* Left Side: Brand & Feature Showcase */}
         <div className="lg:col-span-5 bg-gradient-to-br from-[#1C1810] via-[#2A2315] to-[#120F08] p-8 sm:p-10 text-white flex flex-col justify-between relative overflow-hidden">
@@ -194,10 +194,10 @@ export default function SignInPage() {
               </div>
 
               <div className="w-full flex justify-center">
-                <SignIn 
-                  routing="path" 
-                  path="/sign-in" 
-                  signUpUrl="/sign-up" 
+                <SignIn
+                  routing="path"
+                  path="/sign-in"
+                  signUpUrl="/sign-up"
                   fallbackRedirectUrl="/"
                   forceRedirectUrl="/"
                   signUpFallbackRedirectUrl="/"
@@ -305,10 +305,10 @@ export default function SignInPage() {
 
               {/* 3. Fast Demo Trader Login Button */}
               <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-3">
-                <Button 
-                  variant="secondary" 
+                <Button
+                  variant="secondary"
                   size="sm"
-                  className="w-full justify-center border-amber-200 bg-amber-50/50 hover:bg-amber-100/70 text-amber-900 font-semibold" 
+                  className="w-full justify-center border-amber-200 bg-amber-50/50 hover:bg-amber-100/70 text-amber-900 font-semibold"
                   icon={<Zap size={14} className="text-[#C8920A]" />}
                   onClick={handleDemoSignIn}
                 >

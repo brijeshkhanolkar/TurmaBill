@@ -124,7 +124,7 @@ export function ForgotPasswordView({ onBackToSignIn, onSuccessLogin, initialEmai
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. brijesh@turmabill.com"
+              placeholder="e.g. yashraj@turmabill.com"
               required
             />
 

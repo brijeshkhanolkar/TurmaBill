@@ -26,7 +26,7 @@ interface AuthContextType {
 
 const DEFAULT_DEMO_USER: UserProfileInfo = {
   id: 'usr-demo-trader',
-  name: 'Brijesh Khanolkar',
+  name: 'Yashraj Alurkur',
   email: 'admin@turmabill.local',
   role: 'Admin',
   marketLocation: 'Sangli APMC Yard',
@@ -39,12 +39,12 @@ const AuthContext = createContext<AuthContextType>({
   demoUser: DEFAULT_DEMO_USER,
   isLocalAuthenticated: false,
   isAuthModalOpen: false,
-  openAuthModal: () => {},
-  closeAuthModal: () => {},
-  setClerkKey: () => {},
-  clearClerkKey: () => {},
-  loginLocalUser: () => {},
-  logoutLocalUser: () => {},
+  openAuthModal: () => { },
+  closeAuthModal: () => { },
+  setClerkKey: () => { },
+  clearClerkKey: () => { },
+  loginLocalUser: () => { },
+  logoutLocalUser: () => { },
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -64,7 +64,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const stored = localStorage.getItem('turmabill_user_session');
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (parsed?.name?.includes('Brijesh')) {
+          parsed.name = 'Yashraj Alurkur';
+          if (parsed.email === 'brijeshkhanolkar@gmail.com') {
+            parsed.email = 'yashrajalurkur@gmail.com';
+          }
+          localStorage.setItem('turmabill_user_session', JSON.stringify(parsed));
+        }
+        return parsed;
       }
     } catch (e) {
       console.error('Failed to parse local user session:', e);
@@ -75,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const isClerkEnabled = Boolean(
-    clerkKey && 
+    clerkKey &&
     (clerkKey.startsWith('pk_test_') || clerkKey.startsWith('pk_live_')) &&
     !clerkKey.includes('your_clerk_publishable_key')
   );
